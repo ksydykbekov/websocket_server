@@ -20,29 +20,39 @@
 //  session.wss = "wss://wss.contribute.cam:443";
 //  session.customWSS = true;  #  Please refer to the vdo.ninja instructions for exact details on settings; this is just a demo.
 /////////////////////////
-
 "use strict";
-var fs = require("fs");
-var https = require("https");
-var express = require("express");
-var app = express();
-var WebSocket = require("ws");
+const express = require("express");
+const WebSocket = require("ws");
 
-const key = fs.readFileSync("/etc/letsencrypt/live/webrtc.microret.com/privkey.pem"); /// UPDATE THIS PATH
-const cert = fs.readFileSync("/etc/letsencrypt/live/webrtc.microret.com/fullchain.pem"); /// UPDATE THIS PATH
+const app = express();
+const server = app.listen(8088, () => {
+    console.log("WebSocket server started on port 8088");
+});
 
-var server = https.createServer({key,cert}, app);
-var websocketServer = new WebSocket.Server({ server });
+const websocketServer = new WebSocket.Server({ server });
 
-websocketServer.on('connection', (webSocketClient) => {
-    webSocketClient.on('message', (message) => {
-            websocketServer.clients.forEach( client => {
-                    if (webSocketClient!=client){
-                        client.send(message.toString());
-                    }
-            });
+websocketServer.on("connection", (webSocketClient) => {
+    console.log("New WebSocket connection");
+
+    // Handle incoming messages
+    webSocketClient.on("message", (message) => {
+        console.log("Received message:", message);
+
+        // Broadcast the message to other clients (except the sender)
+        websocketServer.clients.forEach(client => {
+            if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
+                client.send(message.toString());
+            }
+        });
+    });
+
+    // Handle errors
+    webSocketClient.on("error", (error) => {
+        console.error("WebSocket error:", error);
+    });
+
+    // Handle connection close
+    webSocketClient.on("close", () => {
+        console.log("WebSocket connection closed");
     });
 });
-server.listen(8088, () => {console.log(`Server started on port 443`) });
-
-
