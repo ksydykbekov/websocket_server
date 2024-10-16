@@ -105,4 +105,4 @@ websocketServer.on('connection', (webSocketClient) => {
 
   webSocketClient.on('close', function(reasonCode, description) {});
 });
-server.listen(443, () => { console.log(`Server started on port 443`) });
+server.listen(8088, () => { console.log(`Server started on port 443`) });
