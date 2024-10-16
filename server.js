@@ -29,7 +29,7 @@ var app = express();
 var WebSocket = require("ws");
 
 const key = fs.readFileSync("/etc/letsencrypt/live/webrtc.microret.com/privkey.pem"); /// UPDATE THIS PATH
-const cert = fs.readFileSync("etc/letsencrypt/live/webrtc.microret.com/fullchain.pem"); /// UPDATE THIS PATH
+const cert = fs.readFileSync("/etc/letsencrypt/live/webrtc.microret.com/fullchain.pem"); /// UPDATE THIS PATH
 
 var server = https.createServer({key,cert}, app);
 var websocketServer = new WebSocket.Server({ server });
