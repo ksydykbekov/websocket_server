@@ -34,8 +34,8 @@ var app = express();
 var WebSocket = require("ws");
 var cors = require('cors');
 
-const key = fs.readFileSync("/etc/letsencrypt/live/debug.vdo.ninja/privkey.pem"); /// UPDATE THIS PATH
-const cert = fs.readFileSync("/etc/letsencrypt/live/debug.vdo.ninja/fullchain.pem"); /// UPDATE THIS PATH
+const key = fs.readFileSync("/etc/letsencrypt/live/webrtc.microret.com/privkey.pem"); /// UPDATE THIS PATH
+const cert = fs.readFileSync("/etc/letsencrypt/live/webrtc.microret.com/fullchain.pem"); /// UPDATE THIS PATH
 
 var server = https.createServer({ key, cert }, app);
 var websocketServer = new WebSocket.Server({ server });
