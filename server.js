@@ -9,17 +9,14 @@ const server = app.listen(8088, () => {
 
 const websocketServer = new WebSocket.Server({ server });
 
-// Store clients in a map for easy access
-const clients = new Map();
+const clients = new Map(); // Store clients with their IDs
 
 websocketServer.on("connection", (webSocketClient) => {
     console.log("New WebSocket connection");
 
-    // Assign a unique ID for this client
-    const clientId = Date.now();
+    const clientId = Date.now(); // Unique client ID
     clients.set(clientId, webSocketClient);
 
-    // Handle incoming messages
     webSocketClient.on("message", (message) => {
         console.log("Received message:", message);
 
@@ -28,19 +25,18 @@ websocketServer.on("connection", (webSocketClient) => {
             data = JSON.parse(message); // Parse the JSON message
         } catch (error) {
             console.error("Failed to parse message:", error);
-            return; // Exit if parsing fails
+            return;
         }
 
-        // Handle offer, answer, and candidate messages
         if (data.type === "offer") {
             console.log("Handling offer:", data.offer);
-            // Send offer to another client (e.g., consumer)
+            // Send offer to other clients
             clients.forEach((client, id) => {
                 if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({
                         type: "offer",
                         offer: data.offer,
-                        from: clientId // Optional: include the sender's ID
+                        from: clientId
                     }));
                 }
             });
@@ -52,32 +48,41 @@ websocketServer.on("connection", (webSocketClient) => {
                 senderClient.send(JSON.stringify({
                     type: "answer",
                     answer: data.answer,
-                    from: clientId // Optional: include the sender's ID
+                    from: clientId
                 }));
             }
         } else if (data.type === "candidate") {
             console.log("Handling candidate:", data.candidate);
-            // Send ICE candidate to the peer
+            // Send ICE candidate to the appropriate peer
             clients.forEach((client, id) => {
-                if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
+                if (client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({
                         type: "candidate",
                         candidate: data.candidate,
-                        from: clientId // Optional: include the sender's ID
+                        from: clientId
+                    }));
+                }
+            });
+        } else if (data.request === "candidate") {
+            console.log("Received request for ICE candidates.");
+            // Respond with all gathered ICE candidates if necessary
+            clients.forEach((client, id) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: "candidate",
+                        candidate: "Your candidate here" // Replace with actual candidate data
                     }));
                 }
             });
         }
     });
 
-    // Handle errors
     webSocketClient.on("error", (error) => {
         console.error("WebSocket error:", error);
     });
 
-    // Handle connection close
     webSocketClient.on("close", () => {
         console.log("WebSocket connection closed");
-        clients.delete(clientId); // Remove client from map
+        clients.delete(clientId); // Remove client from the map
     });
 });
