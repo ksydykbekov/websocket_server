@@ -30,8 +30,8 @@ websocketServer.on("connection", (webSocketClient) => {
 
         if (data.type === "offer") {
             console.log("Handling offer:", data.offer);
-            // Send offer to other clients
-            clients.forEach((client, id) => {
+            // Send offer to all clients except the sender
+            clients.forEach((client) => {
                 if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({
                         type: "offer",
@@ -42,36 +42,36 @@ websocketServer.on("connection", (webSocketClient) => {
             });
         } else if (data.type === "answer") {
             console.log("Handling answer:", data.answer);
-            // Send answer to the original offer sender
-            const senderClient = [...clients.values()].find(client => client.readyState === WebSocket.OPEN && clientId !== clientId);
-            if (senderClient) {
-                senderClient.send(JSON.stringify({
-                    type: "answer",
-                    answer: data.answer,
-                    from: clientId
-                }));
-            }
+            // Send answer back to the original offer sender
+            clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: "answer",
+                        answer: data.answer,
+                        from: clientId
+                    }));
+                }
+            });
         } else if (data.type === "candidate") {
             console.log("Handling candidate:", data.candidate);
-            // Assume `data.candidate` contains the full ICE candidate
-            // Broadcast the candidate to all other clients
+            // Broadcast the ICE candidate to all other clients
             websocketServer.clients.forEach(client => {
                 if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({
                         type: "candidate",
-                        candidate: data.candidate // Send the actual candidate here
+                        candidate: data.candidate
                     }));
                 }
             });
-        }
-        else if (data.request === "candidate") {
+        } else if (data.request === "candidate") {
             console.log("Received request for ICE candidates.");
-            // Respond with all gathered ICE candidates if necessary
-            clients.forEach((client, id) => {
+            // Here, you could respond with actual candidates if stored
+            // For now, we just send a placeholder
+            clients.forEach((client) => {
                 if (client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({
                         type: "candidate",
-                        candidate: "Your candidate here" // Replace with actual candidate data
+                        candidate: "Your candidate here" // Replace with actual candidate data if available
                     }));
                 }
             });
