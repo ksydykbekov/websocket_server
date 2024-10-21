@@ -1,25 +1,3 @@
-//
-// Copyright (c) 2021 Steve Seguin. All Rights Reserved.
-//  Use of this source code is governed by the APGLv3 open-source 
-//  Use at your own risk, as it may contain bugs or security vunlerabilities
-//
-///// INSTALLATION
-// sudo apt-get update
-// sudo apt-get upgrade
-// sudo apt-get install nodejs -y
-// sudo apt-get install npm -y
-// sudo npm install express
-// sudo npm install ws
-// sudo npm install fs
-// sudo add-apt-repository ppa:certbot/certbot  
-// sudo apt-get install certbot -y
-// sudo certbot certonly // register your domain
-// sudo nodejs server.js // port 443 needs to be open. THIS STARTS THE SERVER
-//
-//// Finally, if using this with a ninja deploy, update index.html of the ninja installation as needed, such as with:
-//  session.wss = "wss://wss.contribute.cam:443";
-//  session.customWSS = true;  #  Please refer to the vdo.ninja instructions for exact details on settings; this is just a demo.
-/////////////////////////
 "use strict";
 const express = require("express");
 const WebSocket = require("ws");
@@ -31,19 +9,65 @@ const server = app.listen(8088, () => {
 
 const websocketServer = new WebSocket.Server({ server });
 
+// Store clients in a map for easy access
+const clients = new Map();
+
 websocketServer.on("connection", (webSocketClient) => {
     console.log("New WebSocket connection");
+
+    // Assign a unique ID for this client
+    const clientId = Date.now();
+    clients.set(clientId, webSocketClient);
 
     // Handle incoming messages
     webSocketClient.on("message", (message) => {
         console.log("Received message:", message);
 
-        // Broadcast the message to other clients (except the sender)
-        websocketServer.clients.forEach(client => {
-            if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
-                client.send(message.toString());
+        let data;
+        try {
+            data = JSON.parse(message); // Parse the JSON message
+        } catch (error) {
+            console.error("Failed to parse message:", error);
+            return; // Exit if parsing fails
+        }
+
+        // Handle offer, answer, and candidate messages
+        if (data.type === "offer") {
+            console.log("Handling offer:", data.offer);
+            // Send offer to another client (e.g., consumer)
+            clients.forEach((client, id) => {
+                if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: "offer",
+                        offer: data.offer,
+                        from: clientId // Optional: include the sender's ID
+                    }));
+                }
+            });
+        } else if (data.type === "answer") {
+            console.log("Handling answer:", data.answer);
+            // Send answer to the original offer sender
+            const senderClient = [...clients.values()].find(client => client.readyState === WebSocket.OPEN && clientId !== clientId);
+            if (senderClient) {
+                senderClient.send(JSON.stringify({
+                    type: "answer",
+                    answer: data.answer,
+                    from: clientId // Optional: include the sender's ID
+                }));
             }
-        });
+        } else if (data.type === "candidate") {
+            console.log("Handling candidate:", data.candidate);
+            // Send ICE candidate to the peer
+            clients.forEach((client, id) => {
+                if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: "candidate",
+                        candidate: data.candidate,
+                        from: clientId // Optional: include the sender's ID
+                    }));
+                }
+            });
+        }
     });
 
     // Handle errors
@@ -54,5 +78,6 @@ websocketServer.on("connection", (webSocketClient) => {
     // Handle connection close
     webSocketClient.on("close", () => {
         console.log("WebSocket connection closed");
+        clients.delete(clientId); // Remove client from map
     });
 });
