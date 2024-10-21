@@ -53,17 +53,18 @@ websocketServer.on("connection", (webSocketClient) => {
             }
         } else if (data.type === "candidate") {
             console.log("Handling candidate:", data.candidate);
-            // Send ICE candidate to the appropriate peer
-            clients.forEach((client, id) => {
-                if (client.readyState === WebSocket.OPEN) {
+            // Assume `data.candidate` contains the full ICE candidate
+            // Broadcast the candidate to all other clients
+            websocketServer.clients.forEach(client => {
+                if (client !== webSocketClient && client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({
                         type: "candidate",
-                        candidate: data.candidate,
-                        from: clientId
+                        candidate: data.candidate // Send the actual candidate here
                     }));
                 }
             });
-        } else if (data.request === "candidate") {
+        }
+        else if (data.request === "candidate") {
             console.log("Received request for ICE candidates.");
             // Respond with all gathered ICE candidates if necessary
             clients.forEach((client, id) => {
